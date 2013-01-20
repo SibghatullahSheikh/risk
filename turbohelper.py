@@ -60,9 +60,12 @@ def run_place(player):
 def run_attack(player):
     """Have a player run his attacks, and then his fortification"""
     riskengine.logai("run_attack")
-    while 1:
+    while True:
+        if len(riskengine.players) == 1:
+            break
+        
         fromterr, toterr = player.ai.Attack(player)
-            
+        
         if fromterr is None or toterr is None or fromterr.armies <= 1:
             break
         riskengine.logai("AI %s attacks %s with %s" % 
