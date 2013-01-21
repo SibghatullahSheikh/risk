@@ -51,7 +51,7 @@ class Continent:
             b = set([])
             for t in self.territories:
                 for n in t.neighbors:
-                    if n.continent != self.name:
+                    if n.continent != self:
                         b.add(t)
             self.borders = list(b)
         return self.borders
@@ -62,6 +62,9 @@ class Continent:
             if t.player != firstowner:
                 return None
         return firstowner
+    
+    def __str__(self):
+        return "%s (%d): %s" % (self.name, self.value, str([t.name for t in self.territories]))
 
 
 class Territory(object): 
