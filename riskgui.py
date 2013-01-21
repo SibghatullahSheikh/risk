@@ -165,7 +165,7 @@ def drawterritory(terr, shaded):
         canvas.create_image(terr.x, terr.y, anchor=Tkinter.NW, 
                             image=terr.shadedimage, tags=(terr.name,))
     else:
-        canvas.delete(terr.name)   
+        canvas.delete(terr.name)
     drawarmy(riskengine.territories[terr.name], 1)
 
 

@@ -65,10 +65,6 @@ def TArmies(terr):
         return 0
 
 
-def TContinent(terr):
-    return terr.continent
-
-
 def TIsBordering(terr, terr2):
     return terr.neighboring(terr2)
 
@@ -95,59 +91,15 @@ def PNewArmies(player):
     return player.freeArmies
 
 
-def tocontinent(con):
-    if isinstance(con, riskengine.Territory):
-        return con.continent
-    elif isinstance(con, tuple):
-        return con[0]
-    else:
-        return con
-
-
-def COwner(con):
-    con = tocontinent(con)
-    continentterrs = [x for x in riskengine.territories.values() if x.continent == con]
-    try:
-        firstowner = continentterrs[0].player
-    except:
-        print continentterrs, con,riskengine.territories['India'].continent
-        raise
-    for x in continentterrs:
-        if x.player != firstowner:
-            return None
-    return firstowner
-
-
-def CTerritories(con):
-    con = tocontinent(con)
-    return [x for x in riskengine.territories.values() if x.continent == con]
-
-
-def CTerritoriesCount(con):
-    if isinstance(con, riskengine.Territory): con = con.continent
-    if isinstance(con, tuple): con = con[0]
-    return len(CTerritories(con)) 
-
-
 def CAnalysis(con, pl=None):
-    if pl is None: pl = riskengine.currentplayer
-    con = tocontinent(con)
-    continentterrs = [x for x in riskengine.territories.values() if x.continent == con]
-    myterrs = [x for x in continentterrs if x.player == pl]
-    enemyterrs = [x for x in continentterrs if x.player != pl and x.player is not None]
+    if pl is None:
+        pl = riskengine.currentplayer
+    
+    myterrs = [t for t in con.territories if t.player == pl]
+    enemyterrs = [t for t in con.territories if t.player != pl and t.player is not None]
     myarmy = sum([t.armies for t in myterrs])
     theirarmy = sum([t.armies for t in enemyterrs])
     return len(myterrs), myarmy, len(enemyterrs), theirarmy
-
-
-def CBorders(con):
-    con = tocontinent(con)
-    terrs = []
-    for terr in riskengine.territories.values():
-        if terr.continent != con:
-            if [x for x in terr.neighbors if x.continent == con]:
-                terrs.append(terr)
-    return terrs
 
 
 def UMessage(*args):

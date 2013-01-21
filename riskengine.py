@@ -17,7 +17,7 @@ import riskgui
 debugging = 0
 territories = {}
 players = {}
-continents = []
+continents = {}
 ailog = []
 
 mapfile = None
@@ -36,6 +36,34 @@ def setupdebugging():
         verbosefile = devnull()
 
 
+class Continent:
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+        self.territories = []
+        self.borders = None
+    
+    def territories_count(self):
+        return len(self.territories)
+    
+    def get_borders(self):
+        if self.borders is None:
+            b = set([])
+            for t in self.territories:
+                for n in t.neighbors:
+                    if n.continent != self.name:
+                        b.add(t)
+            self.borders = list(b)
+        return self.borders
+    
+    def owner(self):
+        firstowner = self.territories[0].player
+        for t in self.territories:
+            if t.player != firstowner:
+                return None
+        return firstowner
+
+
 class Territory(object): 
     """Represents a territory"""
     def __init__(self, name, continent, player, neighbors):
@@ -44,7 +72,7 @@ class Territory(object):
         self.player = player
         self.neighbors = neighbors
         self.armies = 0
-        
+    
     def linkreferences(self):
         """Match up the string references into real references."""
         for i in range(len(self.neighbors)):
@@ -152,28 +180,31 @@ def loadterritories():
     """Load territory (and other) information from a file."""
     global territories, continents
     territories = {}
-    continents = []
+    continents = {}
     
     terr = xml.dom.minidom.parseString(zfile.read("territory.xml"))
     
+    # Continents
+    cont_structs = terr.getElementsByTagName("continent")
+    for con in cont_structs:
+        name = con.getAttribute("name")
+        continents[name] = Continent(name, int(con.getAttribute("value")))
+    
+    # Territories
     terr_structs = terr.getElementsByTagName("territory")
     for terrs in terr_structs:
         name = terrs.getAttribute("name")
-        continent = terrs.getAttribute("continent")
+        continent = continents[terrs.getAttribute("continent")]
         neighbors = terrs.getElementsByTagName("neighbor")
         neighbs = []
         for neigh in neighbors:
             neighbs.append(neigh.childNodes[0].data)
         ter = Territory(name, continent, None, neighbs)
+        continents[continent.name].territories.append(ter)
         territories[name] = ter
-        
+    
     for terrs in territories.values():
         terrs.linkreferences()
-        
-    cont_structs = terr.getElementsByTagName("continent")
-    for con in cont_structs:
-        continents.append((con.getAttribute("name"), 
-                           int(con.getAttribute("value"))))
 
 
 class Card(object):
@@ -534,11 +565,13 @@ def startgame():
     
     while currentplayer.ai is not None and currentplayer.freeArmies > 0:
         currentplayer.ai.run_preplace(currentplayer)
-        rotateplayers()  
+        rotateplayers()
         riskgui.set_armies(currentplayer.freeArmies)
+    
     if currentplayer.ai is not None:
         resetturn()
         nextturn()
+    
     return True
 
 
@@ -581,11 +614,11 @@ def real_nextturn():
     riskgui.set_status("=== %s's Turn ===" % currentplayer.name)
     
     currentplayer.freeArmies += len(currentplayer.territories()) // 3
-    for c in continents:
-        existing = [x for x in territories.values() if x.continent == c[0]]
-        unowned = [x for x in existing if x.player != currentplayer]
+    for c in continents.values():
+        existing = [t for t in territories.values() if t.continent == c]
+        unowned = [t for t in existing if t.player != currentplayer]
         if len(existing) != 0 and len(unowned) == 0 :
-            currentplayer.freeArmies += c[1]
+            currentplayer.freeArmies += c.value
     
     riskgui.set_status("[%s] armies from territories: %d" % (currentplayer.name, currentplayer.freeArmies))
     riskgui.set_armies(currentplayer.freeArmies)

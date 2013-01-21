@@ -18,16 +18,16 @@ def TargetC(player):
     # LOCAL FUNCTION TARGETC:  determines the target continent to attack
     # best ratio of armies in the continent and its borders
     BestDiff=SMALL
-    for C in riskengine.continents:
+    for C in riskengine.continents.values():
         PT =0
         PA =0
         ET =0
         EA = 0
-        PT, PA, ET, EA =CAnalysis(C)
+        PT, PA, ET, EA = CAnalysis(C)
         if ET>0:
             # sub CBORDERANALYSIS:  adjust PT, PA, ET, and EA to reflect
             # territories that border the given continent
-            for T in CBorders(C):
+            for T in C.get_borders():
                 if TIsMine(T):
                     PT = PT+1
                     PA = PA+T.armies
@@ -41,7 +41,7 @@ def TargetC(player):
     return BestC
 
 
-def MyTPressure(t,MaxFronts):
+def MyTPressure(t, MaxFronts):
     # LOCAL FUNCTION MYTPressure:  returns available armies bordering on [enemy?] territory T
     # my territories must have at most MaxFronts fronts in order to count its armies
     Pressure = 0
@@ -58,14 +58,14 @@ def TargetT(player, enemyc):
     # uses local global ENEMYC
     BestDiff = SMALL
     BestT = None
-    for t in filter(lambda x:x==enemyc,riskengine.territories.values()):
+    for t in enemyc.territories:
         y = MyTPressure(t, ALLFRONTS)
         if y>0 and FORCE*t.armies<player.freeArmies + y and not TIsMine(t):
             # if its an enemy territory that can be conquered, then compute
             # your 1-front armies (+) less attacked armies (-) less new exposure to enemies (-)
-            Diff = MyTPressure(t,ONEFRONTS)-t.armies
+            Diff = MyTPressure(t, ONEFRONTS)-t.armies
             for t2 in t.neighbors:
-                if MyTPressure(player, t2,ALLFRONTS)==0 and not TIsMine(t2):
+                if MyTPressure(t2, ALLFRONTS) == 0 and not TIsMine(t2):
                     Diff = Diff-t2.armies
     
     if BestT is None:
@@ -78,10 +78,6 @@ def TargetT(player, enemyc):
                     BestDiff = Diff
                     BestT = ET
     
-    #      TWeakestFront(BestT,ET,EA)
-    #      Diff = PNewArmies(player)*NEWRATIO # allow only a %-age of new armies to go for this attack
-    #      Diff = Diff+TArmies(BestT)-EA*FORCE
-    #      if Diff<1 then BestT = 0
     return BestT
 
 
@@ -110,9 +106,9 @@ def Placement(player):
             if (T.armies>MINARMIES+TArmies(ET)*FORCE):
                 AnyAttack = 1
     
-    for C in riskengine.continents: # reinforce existing continents if necessary - to defend against STRONGEST front first
-        if (COwner(C)==player) and (ToTerritory is None) and (AnyAttack==1):
-            for T in CTerritories(C):
+    for C in riskengine.continents.values(): # reinforce existing continents if necessary - to defend against STRONGEST front first
+        if (C.owner() == player) and (ToTerritory is None) and (AnyAttack==1):
+            for T in C.territories:
                 if TIsFront(T):
                     et = TStrongestFront(T)
                     if (T.armies<MINARMIES+et.armies*FORCE): # shortfall in my territory T
@@ -123,12 +119,6 @@ def Placement(player):
     
     EnemyC = TargetC(player)
     EnemyT = TargetT(player, EnemyC)
-    
-    #  UMessage('Total new armies to place ',PNewArmies(player))
-    #  UMessage('target continent = ',EnemyC)
-    #  UMessage('target territory = ',EnemyT)
-    #  UMessage('total pressure on that target territory = ',MyTPressure(EnemyT,ALLFRONTS))
-    #  UMessage('minimum required armies to attack = ',MINARMIES+TArmies(EnemyT)*FORCE)
     
     if (EnemyT) and (MyTPressure(EnemyT,ALLFRONTS)<(MINARMIES+EnemyT.armies*FORCE)):
         # continue to reinforce until attack is possible - put them all in strongest country
@@ -145,10 +135,10 @@ def Placement(player):
         ET = 0
         EA = 0
         BestDiff = SMALL
-        PT, PA, ET, EA = CAnalysis(player, EnemyC)
+        PT, PA, ET, EA = CAnalysis(EnemyC, player)
         if ((PA-PT)<MINARMIES+ET+EA*FORCE):
             # place more armies in the continent so that you can capture the whole thing
-            for T in CTerritories(EnemyC):
+            for T in EnemyC.territories:
                 Diff = T.armies # put in strongest
                 if (PNewArmies(player)>5):
                     Diff = -TArmies(T)  # but put in weakest front until 5 armies left
@@ -156,9 +146,9 @@ def Placement(player):
                     ToTerritory = T
                     BestDiff = Diff
     
-    for C in riskengine.continents: # reinforce existing continents if necessary - WEAKEST front first
-        if (COwner(C)==player) and (ToTerritory is None): # if you own the continent and already have an attack
-            for T in CTerritories(C):
+    for C in riskengine.continents.values(): # reinforce existing continents if necessary - WEAKEST front first
+        if (C.owner() == player) and (ToTerritory is None): # if you own the continent and already have an attack
+            for T in C.territories:
                 if TIsFront(T):
                     et = TStrongestFront(T)
                     if (TArmies(T)<et.armies*FORCE):
@@ -176,9 +166,9 @@ def Placement(player):
             if TIsMine(T) and (TArmies(T)>BestDiff):
                 BestDiff = TArmies(T)
                 ToTerritory = T
-    for C in riskengine.continents:# reinforce existing continents if necessary
-        if COwner(C) == player and ToTerritory is None:# if you own the continent and already have an attack
-            for T in CTerritories(C):
+    for C in riskengine.continents.values():# reinforce existing continents if necessary
+        if C.owner() == player and ToTerritory is None:# if you own the continent and already have an attack
+            for T in C.territories:
                 if TIsFront(T):
                     if (TArmies(T)<TPressure(T)*FORCE):
                         if (ToTerritory is None):
@@ -192,15 +182,14 @@ def Placement(player):
             ET = TWeakestFront(T)
             EA = TArmies(ET)
             Diff = TArmies(T)+PNewArmies(player)-EA # worthwhile to fortify this one?
-            if (TContinent(T)==EnemyC):
+            if (T.continent == EnemyC):
                 Diff = 1 # but always worthwhile fortifying your target continent
             if TIsFront(T) and (Diff>0):# territory is mine and front and can be made stronger than the weakest front
                 Diff =  TPressure(T)-TArmies(T)
                 if TIsBordering(T,EnemyT):
                     Diff = TPressure(T)+(TArmies(T) // 8) # avoid fortifying around a country you're about to take
-                if (TContinent(T)==EnemyC):
+                if (T.continent == EnemyC):
                     Diff = Diff+CBONUS
-    #              UMessage('Territory ',T,' is worthy of fortification with Pressure - Armies + Bonus of ',Diff)
                 if (Diff>BestDiff):
                     ToTerritory = T
                     BestDiff = Diff
@@ -219,7 +208,7 @@ def ATargetC(player):
                 Y=X # Y holds the leading player's number
     
     BestDiff=SMALL
-    for C in riskengine.continents:
+    for C in riskengine.continents.values():
         PT =0
         PA =0
         ET =0
@@ -228,7 +217,7 @@ def ATargetC(player):
         if ET>0:
             # sub CBORDERANALYSIS:  adjust PT, PA, ET, and EA to reflect
             # territories that border the given continent
-            for T in CBorders(C):
+            for T in C.get_borders():
                 if TIsMine(T):
                     PT = PT+1
                     PA = PA+T.armies
@@ -237,10 +226,10 @@ def ATargetC(player):
                     EA = EA+T.armies
         Diff = PA-ET-EA
         
-        if (COwner(C)==Y) and player.conqueredTerritory and (PT>0): # attack the leading player's continents
+        if (C.owner() == Y) and player.conqueredTerritory and (PT>0): # attack the leading player's continents
             Diff=Diff+500
         
-        if (COwner(C)) and (COwner(C)!=player) and player.conqueredTerritory and (PT>0):
+        if C.owner() and (C.owner() != player) and player.conqueredTerritory and (PT>0):
             Diff=Diff+500
         
         if ET>0 and PT>0 and Diff>BestDiff:
@@ -297,7 +286,7 @@ def Attack(player):
     CBONUS=5          # bonus for reinforcing territories in current target continent
     NEWRATIO=0.5      # %-age of new armies that can go towards an out-of-continent attack
     
-    EnemyC=ATargetC(player)
+    EnemyC = ATargetC(player)
     PT=0
     PA=0
     ET=0
@@ -312,8 +301,8 @@ def Attack(player):
                 BestDiff=PArmiesCount(X)
                 B=X # Y holds the leading player's number
     
-    if ((PA-PT)>((MINARMIES+ET+EA)/FORCE)) or (not player.conqueredTerritory) or (COwner(EnemyC)):
-        ToTerritory=ATargetT(player, EnemyC)
+    if ((PA-PT)>((MINARMIES+ET+EA)/FORCE)) or (not player.conqueredTerritory) or (EnemyC.owner()):
+        ToTerritory = ATargetT(player, EnemyC)
 #      UMessage('Target Continent== ',EnemyC,' Target Territory== ',ToTerritory)
 #      if (ToTerritor==0) and (not SConquest):
 #        UMessage('why arent you proposing an attack, perhaps on your target continent ',EnemyC)

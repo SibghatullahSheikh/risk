@@ -20,7 +20,7 @@ def Placement(player):
     for t in riskengine.territories.values():
         Cscore = 0
         if TIsFront(t):
-            pt,pa,et,ea = CAnalysis(TContinent(t))
+            pt,pa,et,ea = CAnalysis(t.continent)
             if ea == 0:
                 ent = TStrongestFront(t);
                 Cscore = 0.0001
@@ -28,24 +28,24 @@ def Placement(player):
                     coef = 0.4
                 else: 
                     coef = 0.1
-                if COwner(TContinent(ent)) is not None :
+                if ent.continent.owner() is not None:
                     coef += 1.1
                 else:
                     coef += 1
                 if t.armies * 1.0/ ent.armies < coef:
                     Cscore = 12
             else:
-                Cscore = (pt * 1.0/ CTerritoriesCount(TContinent(t))) + 1.0 * pa / ea + (1.0/(CTerritoriesCount(TContinent(t))-pt))*10
+                Cscore = (pt * 1.0 / t.continent.territories_count()) + 1.0 * pa / ea + (1.0/(t.continent.territories_count()-pt))*10
             if Cscore > score:
                 score = Cscore
-                continent = TContinent(t)
+                continent = t.continent
     Tscore = -10000
     Score = -10000
     Maxratio = -10000
     
     for t in [x for x in riskengine.territories.values() if x.continent == continent]:
          if TIsFront(t):
-             pt,pa,et,ea = CAnalysis(TContinent(t))
+             pt,pa,et,ea = CAnalysis(t.continent)
              if ea == 0:
                  Tscore = TPressure(t) - t.armies
              for u in [x for x in riskengine.territories.values() if x.continent == continent]:  
@@ -68,8 +68,8 @@ def Attack(player):
     for t in riskengine.territories.values():
         Tscore = -10000
         if TIsFront(t) and t.armies > 2:
-            pt,pa,et,ea = CAnalysis(t)
-            for u in [x for x in riskengine.territories.values() if x.continent == TContinent(t)]:
+            pt,pa,et,ea = CAnalysis(t.continent)
+            for u in [x for x in riskengine.territories.values() if x.continent == t.continent]:
                 if ea != 0:
                     if TIsBordering(t, u) and u.player != player:
                         Tscore = t.armies * 1.0 / u.armies
